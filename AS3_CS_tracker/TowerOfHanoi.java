@@ -1,3 +1,7 @@
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+
 import lejos.hardware.Button;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.motor.EV3MediumRegulatedMotor;
@@ -8,6 +12,8 @@ import lejos.hardware.port.SensorPort;
 import lejos.hardware.sensor.EV3ColorSensor;
 import lejos.hardware.sensor.EV3GyroSensor;
 import lejos.hardware.sensor.EV3UltrasonicSensor;
+import lejos.remote.nxt.BTConnection;
+import lejos.remote.nxt.BTConnector;
 import lejos.robotics.EncoderMotor;
 import lejos.utility.Delay;
 
@@ -31,6 +37,17 @@ public class TowerOfHanoi {
 	// distance from ultrasonic to gripper (cm)
 	double gripDist = 15.0;
 	
+	// tracker
+	public DataOutputStream dataOut;
+	public DataInputStream dataIn;
+	public BTConnection BTLink;
+	public BTConnection btLink;
+	public double transmitReceived;
+	
+	// tracker values
+	public double[] tar = new double[2]; // target location
+	public double[] curr = new double[2]; // tracked object
+	
 	public void run(EV3LargeRegulatedMotor _leftM, EV3LargeRegulatedMotor _rightM, NXTRegulatedMotor _liftM,
 			EV3MediumRegulatedMotor _gripM, EV3UltrasonicSensor _ultrasonic, EV3GyroSensor _gyro, EV3ColorSensor _color) {
 		
@@ -43,13 +60,12 @@ public class TowerOfHanoi {
 		gyro = _gyro;
 		color = _color;
 		
+		//connect();
+		
 		lift();
-		//bottomRing();
-		//place();
-		while(true){
-			distReading();
-			Delay.msDelay(1000);
-		}
+		bottomRing();
+		place();
+		
 		
 		
 		//Button.waitForAnyPress();
@@ -117,5 +133,55 @@ public class TowerOfHanoi {
 		System.out.format("%f", dist[0]);
 		return dist;
 	}
+	
+	// read the tracker
+	public void readTracker() {	
+		sendRequest();
+		checkResponse();
+	}
+	
+	// send a request to the tracker
+	public void sendRequest() {
+		try {
+			//System.out.println("request made");
+			dataOut.writeInt(1);
+			dataOut.flush();
+		}  catch (IOException ioe) {
+            System.out.println("\nIO Exception writeInt");
+         }
+	}
+	
+	public void checkResponse() {
+		while (true) {
+			try {
+				int check = dataIn.readInt();
+				transmitReceived = dataIn.readDouble();
+				System.out.println(transmitReceived);
+				if(check == 0) {
+					tar[0] = transmitReceived;
+				} else if (check == 1) {
+					tar[1] = transmitReceived;
+				} else if (check == 2) {
+					curr[0] = transmitReceived;
+				} else if (check == 3) {
+					curr[1] = transmitReceived;
+					break;
+				}
+				
+			} catch (IOException ioe) {
+				System.out.println("IO Exception readInt");
+			}
+		}
+	}
+	
+	// connect BT
+	public void connect() {
+		System.out.println("Listening");
+		BTConnector connector = new BTConnector();
+		BTLink = (BTConnection) connector.waitForConnection(100, 0);
+		dataOut = BTLink.openDataOutputStream();
+		dataIn = BTLink.openDataInputStream();
+
+	}// End connect
 
 }
