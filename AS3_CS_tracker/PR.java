@@ -20,12 +20,12 @@ public class PR {
 	// sensors
 	static EV3UltrasonicSensor ultrasonic = new EV3UltrasonicSensor(SensorPort.S2);
 	static EV3GyroSensor gyro = new EV3GyroSensor(SensorPort.S1);
-	static EV3ColorSensor color = new EV3ColorSensor(SensorPort.S4);
+	//static EV3ColorSensor color = new EV3ColorSensor(SensorPort.S4);
 	
 	static TowerOfHanoi t = new TowerOfHanoi();
 	
 
 	public static void main(String[] args) {
-		t.run(leftM, rightM, liftM, gripM, ultrasonic, gyro, color);
+		t.run(leftM, rightM, liftM, gripM, ultrasonic, gyro);
 	}
 }
