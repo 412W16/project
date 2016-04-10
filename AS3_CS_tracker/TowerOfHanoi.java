@@ -11,6 +11,8 @@ import lejos.hardware.sensor.EV3UltrasonicSensor;
 import lejos.remote.nxt.BTConnection;
 import lejos.remote.nxt.BTConnector;
 import lejos.utility.Delay;
+import lejos.utility.Matrix;
+
 import java.awt.Point;
 
 public class TowerOfHanoi {
@@ -42,7 +44,7 @@ public class TowerOfHanoi {
 	// tracker values
 	public double[] tar = new double[2]; // target location
 	public double[] curr = new double[2]; // tracked object
-	public Point pole1 = new Point(585, 200);
+	public Point pole1 = new Point(585, 190);
 	public Point pole2 = new Point(335, 200);
 	public Point pole3 = new Point(85, 200);
 	private Tower[] towers = new Tower[3];
@@ -51,6 +53,8 @@ public class TowerOfHanoi {
 	public Boolean pickedUp = false;
 	
 	public boolean stop = false;
+	
+	public double x;
 	
 	public void run(EV3LargeRegulatedMotor _leftM, EV3LargeRegulatedMotor _rightM, NXTRegulatedMotor _liftM,
 			EV3MediumRegulatedMotor _gripM, EV3UltrasonicSensor _ultrasonic, EV3GyroSensor _gyro) {
@@ -62,9 +66,10 @@ public class TowerOfHanoi {
 		gripM = _gripM;
 		ultrasonic = _ultrasonic;
 		gyro = _gyro;
-//		drop();
+
 		lift();
 		connect();
+				
 		initTowers();
 		initRings();
 		align(pole1);
@@ -79,6 +84,7 @@ public class TowerOfHanoi {
 		
 		Button.waitForAnyPress();
 	}
+	
 		
 	private void initRings() {
 		towers[0].addRing(new Ring("Blue", 100));
@@ -241,6 +247,7 @@ public class TowerOfHanoi {
 		while (Math.abs(error.x) > buffer || Math.abs(error.y) > buffer) {
 			// correct x error
 			
+			// now we can simply use pixel error to correct our error
 			// turn right
 			if (error.x > buffer){
 				leftM.setSpeed(80);
@@ -265,7 +272,11 @@ public class TowerOfHanoi {
 				
 				leftM.stop();
 				rightM.stop();
+			} else {
+				// find the angle we're at and try to correct it
+				updateX(pole);
 			}
+			
 			//correct y error
 			
 			// move forward
@@ -299,6 +310,57 @@ public class TowerOfHanoi {
 			
 			error = new Point((int)curr[0] - pole.x, (int)curr[1] - pole.y);
 		}
+	}
+	
+	// basically use geometry to find angle instead of jacobian
+	public void updateX(Point pole) {
+		double x = readGyro();
+		if(Math.abs(x) > 30) {
+			if (x < 0) {
+				leftM.setSpeed(80);
+				rightM.setSpeed(80);
+				
+				leftM.forward();
+				rightM.backward();
+				
+				while (readGyro() > -90 ) {
+					continue;
+				}
+				rightM.forward();
+				Delay.msDelay(1000);
+				
+				leftM.backward();
+				
+				while (readGyro() < 0 ) {
+					continue;
+				}
+				
+				leftM.stop();
+				rightM.stop();
+			} else if (x>0){
+				leftM.setSpeed(80);
+				rightM.setSpeed(80);
+				
+				leftM.backward();
+				rightM.forward();
+				
+				while (readGyro() > -90 ) {
+					continue;
+				}
+				leftM.forward();
+				Delay.msDelay(1000);
+				
+				rightM.backward();
+				
+				while (readGyro() < 0 ) {
+					continue;
+				}
+				
+				leftM.stop();
+				rightM.stop();
+			}
+		}
+		
 	}
 
 	public void turnRight() {
@@ -445,7 +507,7 @@ public class TowerOfHanoi {
 	public float[] distReading() {
 		float[] dist = new float[1];
 		ultrasonic.getDistanceMode().fetchSample(dist, 0);
-		System.out.format("%f", dist[0]);
+		//System.out.format("%f", dist[0]);
 		return dist;
 	}
 	
@@ -482,10 +544,10 @@ public class TowerOfHanoi {
 					curr[1] = transmitReceived;
 					break;
 				}
-				System.out.print("x: ");
-				System.out.println(tar[0]);
-				System.out.print("y:");
-				System.out.println(tar[1]);
+				//System.out.print("x: ");
+				//System.out.println(tar[0]);
+				//System.out.print("y:");
+				//System.out.println(tar[1]);
 			} catch (IOException ioe) {
 				System.out.println("IO Exception readInt");
 			}
